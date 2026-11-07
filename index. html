@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Self-Learning AI Chatbot</title>
+    <style>
+        body { font-family: Arial, sans-serif; background: #f0f2f5; margin: 0; padding: 20px; display: flex; justify-content: center; }
+        .chat-container { width: 100%; max-width: 600px; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        .chat-box { height: 400px; border: 1px solid #ddd; border-radius: 5px; overflow-y: scroll; padding: 10px; margin-bottom: 15px; background: #fafafa; display: flex; flex-direction: column; gap: 10px; }
+        .message { padding: 10px 14px; border-radius: 6px; max-width: 80%; line-height: 1.4; }
+        .user { background: #0084ff; color: #fff; align-self: flex-end; }
+        .bot { background: #e4e6eb; color: #000; align-self: flex-start; }
+        .input-group { display: flex; gap: 10px; }
+        input { flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 5px; outline: none; }
+        button { padding: 10px 20px; background: #0084ff; color: #fff; border: none; border-radius: 5px; cursor: pointer; }
+        button:hover { background: #006dd3; }
+    </style>
+</head>
+<body>
+
+<div class="chat-container">
+    <h2>Self-Learning Chatbot</h2>
+    <div class="chat-box" id="chatBox"></div>
+    <div class="input-group">
+        <input type="text" id="userInput" placeholder="এখানে কিছু লিখুন..." onkeypress="handleKeyPress(event)">
+        <button onclick="sendMessage()">পাঠান</button>
+    </div>
+</div>
+
+<!-- Firebase SDKs -->
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getFirestore, collection, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+    // আপনার দেওয়া ফায়ারবেস কনফিগারেশন
+    const firebaseConfig = {
+        apiKey: "AIzaSyCOwXc5gc46tz1UjPEqcA993YS62clgV_k",
+        authDomain: "tchat-46fdb.firebaseapp.com",
+        projectId: "tchat-46fdb",
+        storageBucket: "tchat-46fdb.firebasestorage.app",
+        messagingSenderId: "223368702559",
+        appId: "1:223368702559:web:65b9a708ffb81a861909ea"
+    };
+
+    // ফায়ারবেস ইনিশিয়ালাইজেশন
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    const chatBox = document.getElementById("chatBox");
+    const userInput = document.getElementById("userInput");
+
+    // চ্যাটবটের লজিক এবং ডাটাবেস থেকে শেখার প্রক্রিয়া
+    window.sendMessage = async function() {
+        const text = userInput.value.trim();
+        if (!text) return;
+
+        appendMessage(text, 'user');
+        userInput.value = "";
+
+        // ১. ইউজারের মেসেজ ডাটাবেসে সেভ করা (যাতে বট নিজে থেকে শিখতে পারে)
+        try {
+            await addDoc(collection(db, "knowledge_base"), {
+                message: text,
+                timestamp: new Date()
+            });
+        } catch (e) {
+            console.error("ডাটাবেসে সেভ করতে সমস্যা হয়েছে: ", e);
+        }
+
+        // ২. ডাটাবেস থেকে পূর্বের সব শিক্ষা বা কথোপকথন রিড করা
+        let botReply = "বুঝেছি, বিষয়টি নোট করে রাখলাম। ভবিষ্যতে এটি নিয়ে আরও কাজ করব।";
+        try {
+            const querySnapshot = await getDocs(collection(db, "knowledge_base"));
+            let learnedData = [];
+            querySnapshot.forEach((doc) => {
+                learnedData.push(doc.data().message);
+            });
+
+            // যদি ডাটাবেসে আগে থেকে কোনো উত্তর বা মিল পাওয়া যায়, সেটি দিয়ে শিখবে
+            if (learnedData.length > 1) {
+                botReply = `আমি ডাটাবেস থেকে শিখেছি। আপনার আগের কথাগুলো মিলিয়ে মোট ${learnedData.length}টি তথ্য আমার মেমরিতে জমা আছে।`;
+            }
+        } catch (e) {
+            botReply = "সংযোগের সমস্যার কারণে এই মুহূর্তে মেমরি থেকে রিড করতে পারছি না।";
+        }
+
+        setTimeout(() => {
+            appendMessage(botReply, 'bot');
+        }, 500);
+    }
+
+    function appendMessage(text, sender) {
+        const msgDiv = document.createElement("div");
+        msgDiv.className = `message ${sender}`;
+        msgDiv.innerText = text;
+        chatBox.appendChild(msgDiv);
+        chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    window.handleKeyPress = function(e) {
+        if (e.key === 'Enter') {
+            sendMessage();
+        }
+    }
+</script>
+
+</body>
+</html>
